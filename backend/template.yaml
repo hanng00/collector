@@ -1,0 +1,367 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform:
+  - AWS::Serverless-2016-10-31
+Description: data-collector-backend
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: nodejs22.x
+    MemorySize: 512
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        DATA_TABLE: !Ref DataTable
+
+Resources:
+  # <-- API Gateway -->
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'*'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
+  
+  # <-- DynamoDB -->
+  DataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes:
+        - IndexName: ReverseLookup
+          KeySchema:
+            - AttributeName: SK
+              KeyType: HASH
+            - AttributeName: PK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: event-target
+          Value: core-bus
+
+  # <-- S3 -->
+  UploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # <-- Lambda Functions -->
+  CreateMagicLink:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/features/auth/createMagicLink.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /auth/magic-links
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Sourcemap: true
+
+  ValidateShareLink:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/features/links/validateShareLink.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /share-links/{token}
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Sourcemap: true
+
+  GetColumns:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/features/columns/getColumns.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /workspaces/{workspaceId}/columns
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Sourcemap: true
+
+  PutColumns:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/features/columns/putColumns.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /workspaces/{workspaceId}/columns
+            Method: PUT
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Sourcemap: true
+
+  ListRows:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/features/rows/listRows.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /workspaces/{workspaceId}/rows
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Sourcemap: true
+
+  UpsertRow:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/features/rows/upsertRow.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /workspaces/{workspaceId}/rows/{rowId}
+            Method: PUT
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Sourcemap: true
+
+  PostUpload:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/features/uploads/postUpload.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+        - S3WritePolicy:
+            BucketName: !Ref UploadBucket
+      Environment:
+        Variables:
+          UPLOAD_BUCKET: !Ref UploadBucket
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /workspaces/{workspaceId}/uploads
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Sourcemap: true
+
+  GetUpload:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/features/uploads/getUpload.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /workspaces/{workspaceId}/uploads/{uploadId}
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Sourcemap: true
+
+  ExtractUpload:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/features/uploads/extractUpload.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: "*"
+      Events:
+        UploadObjectCreated:
+          Type: S3
+          Properties:
+            Bucket: !Ref UploadBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: workspaces/
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Sourcemap: true
+
+  ExportRows:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/features/exports/getExport.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /workspaces/{workspaceId}/export
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Sourcemap: true
+
+  CreateWorkspace:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/features/workspaces/createWorkspace.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /workspaces
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Sourcemap: true
+
+  ListWorkspaces:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/features/workspaces/listWorkspaces.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /workspaces
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Sourcemap: true
+
+  GetWorkspace:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/features/workspaces/getWorkspace.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /workspaces/{workspaceId}
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Sourcemap: true
+
+  CreateShareLink:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/features/links/createShareLink.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /workspaces/{workspaceId}/share-links
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Sourcemap: true
+
+Outputs:
+  # API
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  ApiGatewayId:
+    Description: API Gateway ID
+    Value: !Ref ApiGateway
+  # ExtractUpload
+  ExtractUploadArn:
+    Value: !GetAtt ExtractUpload.Arn
+  # UploadBucket
+  UploadBucketName:
+    Value: !Ref UploadBucket
+  # DataTable
+  DataTableArn:
+    Value: !GetAtt DataTable.Arn

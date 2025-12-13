@@ -1,0 +1,58 @@
+import type { XPost } from "./types";
+
+export const xPosts: XPost[] = [
+  {
+    id: "collector-01",
+    name: "Mara K.",
+    handle: "marak_ops",
+    avatarInitials: "MK",
+    dateLabel: "Dec 2",
+    text: "ok so I just sent a Collector link instead of explaining our spreadsheet format for the 6th time this week and... it worked??? people just uploaded their PDFs and it filled itself in. I'm shook",
+    metrics: { replies: 12, reposts: 21, likes: 318, bookmarks: 44 },
+  },
+  {
+    id: "collector-02",
+    name: "Noah",
+    handle: "noahbuilds",
+    avatarInitials: "NB",
+    dateLabel: "Nov 18",
+    text: "finally an AI tool that doesn't pretend it knows everything. Collector actually shows you what it extracted and asks if it's right. like having a junior dev who actually asks questions",
+    metrics: { replies: 8, reposts: 14, likes: 241, bookmarks: 36 },
+  },
+  {
+    id: "collector-03",
+    name: "Sasha",
+    handle: "sasha_finops",
+    avatarInitials: "SF",
+    dateLabel: "Oct 29",
+    text: "spent 2 hours yesterday manually copying data from 15 different email formats into our tracker. today I just sent a link. no signups, no confusion, just... data. why didn't this exist before",
+    metrics: { replies: 5, reposts: 9, likes: 197, bookmarks: 28 },
+  },
+  {
+    id: "collector-04",
+    name: "Eli",
+    handle: "eli_product",
+    avatarInitials: "EP",
+    dateLabel: "Oct 12",
+    text: "the fact that Collector keeps the original file attached to each row is *chef's kiss*. no more 'wait which screenshot was that?' moments during reviews",
+    metrics: { replies: 3, reposts: 7, likes: 156, bookmarks: 19 },
+  },
+  {
+    id: "collector-05",
+    name: "Rina",
+    handle: "rina_ops",
+    avatarInitials: "RO",
+    dateLabel: "Sep 30",
+    text: "used Collector for vendor onboarding last week. uploaded 20+ random docs, it parsed most of it correctly, I fixed 3 things, exported. done. this is how AI should work",
+    metrics: { replies: 6, reposts: 11, likes: 228, bookmarks: 31 },
+  },
+  {
+    id: "collector-06",
+    name: "Ben",
+    handle: "ben_tables",
+    avatarInitials: "BT",
+    dateLabel: "Sep 9",
+    text: "collector is basically a smart intake form that doesn't make people fill out forms. just drop files, it figures it out, you review. simple as that",
+    metrics: { replies: 4, reposts: 10, likes: 184, bookmarks: 26 },
+  },
+];

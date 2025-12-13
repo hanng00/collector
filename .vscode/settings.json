@@ -1,0 +1,7 @@
+{
+    // Remove unused imports on save
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit",
+        "source.removeUnusedImports": "explicit"
+    }
+}

@@ -1,0 +1,51 @@
+name: Build and Deploy CDK Stacks
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set AWS Account ID and Environment Suffix
+        id: set-environment
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "Production branch detected"
+            echo "AWS_ROLE=arn:aws:iam::257394478016:role/github-actions" >> $GITHUB_ENV
+          elif [[ "${{ github.ref_name }}" == "develop" ]]; then
+            echo "Develop branch detected"
+            echo "AWS_ROLE=arn:aws:iam::135808914643:role/github-actions" >> $GITHUB_ENV
+          else
+            echo "Unknown branch. Cannot set environment variables."
+            exit 1
+          fi
+
+      - name: Configure AWS Credentials
+        id: configure-aws-credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE }}
+          aws-region: eu-west-1
+
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          npm install -g esbuild
+          npm install
+
+      - name: Build and Deploy Stack
+        working-directory: backend
+        run: |
+          sam build
+          sam deploy --no-confirm-changeset --no-fail-on-empty-changeset

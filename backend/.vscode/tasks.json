@@ -1,0 +1,10 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "samp-local-cleanup",
+      "type": "shell",
+      "command": "samp local --force-restore --template undefined --region eu-west-1"
+    }
+  ]
+}

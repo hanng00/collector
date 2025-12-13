@@ -1,0 +1,34 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "samp",
+      "env": {
+        "muteParentOutput": "true"
+      },
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "postDebugTask": "samp-local-cleanup",
+      "name": "Debug GetProductVisibility",
+      "args": [
+        "local",
+        "--functions",
+        "GetProductVisibility",
+        "--profile",
+        "c8-test",
+        "--region",
+        "eu-west-1",
+        "--stack-name",
+        "admin",
+        "--template",
+        "undefined"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/.samp-out/**/*.js"
+      ]
+    }
+  ]
+}
