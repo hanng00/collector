@@ -1,6 +1,6 @@
-import type { S3EventHandler } from "aws-lambda";
+import type { S3Handler } from "aws-lambda";
 
-export const handler: S3EventHandler = async (event) => {
+export const handler: S3Handler = async (event) => {
   console.log("Received S3 event for extraction", JSON.stringify(event));
 
   // Process each created object. Keep it idempotent: everything keys off uploadId.

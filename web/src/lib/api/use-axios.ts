@@ -1,8 +1,9 @@
 "use client";
 
+import { getAccessToken } from "@/features/auth/client";
+import { SHARE_TOKEN_KEY } from "@/features/auth/config";
 import axios, { AxiosInstance } from "axios";
 import { useMemo } from "react";
-import { OWNER_TOKEN_KEY, SHARE_TOKEN_KEY } from "../auth/config";
 import { getBackendUrl } from "../config";
 
 /**
@@ -21,11 +22,14 @@ export function useAxios(): AxiosInstance {
     instance.interceptors.request.use(
       async (config) => {
         if (typeof window !== "undefined") {
-          const ownerToken = localStorage.getItem(OWNER_TOKEN_KEY);
-          const linkToken = sessionStorage.getItem(SHARE_TOKEN_KEY);
-          if (ownerToken) {
-            config.headers["X-Owner-Token"] = ownerToken;
+          // Get Cognito access token
+          const accessToken = await getAccessToken();
+          if (accessToken) {
+            config.headers["Authorization"] = `Bearer ${accessToken}`;
           }
+          
+          // Also include share link token if present (for anonymous contributors)
+          const linkToken = sessionStorage.getItem(SHARE_TOKEN_KEY);
           if (linkToken) {
             config.headers["X-Link-Token"] = linkToken;
           }

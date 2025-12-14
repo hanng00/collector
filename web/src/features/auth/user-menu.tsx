@@ -10,9 +10,9 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth, useSignOut } from "@/hooks/use-auth";
 import { LogOut, User } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuth, useSignOut } from "./use-auth";
 
 export function UserMenu() {
   const { data: user, isLoading } = useAuth();

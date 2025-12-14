@@ -1,71 +1,67 @@
-import { Badge } from "@/components/ui/badge";
+"use client";
+
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { SHARE_TOKEN_KEY } from "@/features/auth/config";
+import { useRows } from "@/features/collector/api/use-rows";
 import type { ShareView } from "@contracts";
-import { UploadDropzone } from "./upload-dropzone";
+import Link from "next/link";
+import { WorkspaceGrid } from "./workspace-grid";
 
 type ShareIntakeProps = {
   view: ShareView;
 };
 
 export function ShareIntake({ view }: ShareIntakeProps) {
+  // Ensure the auth interceptor has the link token before we call row APIs.
+  if (typeof window !== "undefined") {
+    try {
+      if (sessionStorage.getItem(SHARE_TOKEN_KEY) !== view.link.token) {
+        sessionStorage.setItem(SHARE_TOKEN_KEY, view.link.token);
+      }
+    } catch {
+      // If storage is unavailable, row APIs may not work; the share view still renders.
+    }
+  }
+
+  const rowsEnabled =
+    typeof window !== "undefined" &&
+    (() => {
+      try {
+        return sessionStorage.getItem(SHARE_TOKEN_KEY) === view.link.token;
+      } catch {
+        return false;
+      }
+    })();
+
+  const { data } = useRows(view.workspace.id, { enabled: rowsEnabled });
+  const rows = data?.rows ?? [];
+
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="space-y-2">
-          <CardTitle className="text-2xl">
-            {view.workspace.name} — request
-          </CardTitle>
-          <p className="text-muted-foreground">
-            Add your info and drop files here. No signup needed.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="outline">Request ID: {view.link.token}</Badge>
-            {view.link.passcodeRequired && <Badge>Passcode required</Badge>}
-          </div>
+    <div className="h-[calc(100vh-6rem)]">
+      <WorkspaceGrid
+        workspaceId={view.workspace.id}
+        columns={view.columns}
+        rows={rows}
+        contributorLinkId={view.link.id}
+        canEdit={view.link.permissions.canEditRows}
+        autoCreateRow
+        autoFocusFirstCell
+      />
+
+      <Card className="border-dashed">
+        <CardHeader>
+          <CardTitle className="text-base">Need to collect data too?</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">
-            We'll organize everything into rows below. You can edit anything before you're done.
+            Create your own request in minutes and share a link.
           </p>
-          <Separator />
-          <div className="grid gap-3 md:grid-cols-2">
-            {view.columns.map((column) => (
-              <div key={column.id} className="rounded-lg border p-3">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">{column.name}</p>
-                  <Badge variant="outline">{column.type}</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">{column.description}</p>
-                {column.examples && column.examples.length > 0 && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Examples: {column.examples.join(", ")}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
+          <Button asChild variant="secondary" size="sm">
+            <Link href="/workspaces/new">Create your own workspace</Link>
+          </Button>
         </CardContent>
       </Card>
-
-      <UploadDropzone workspaceId={view.workspace.id} />
-
-      {view.latestUpload && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Latest file</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p className="font-medium">{view.latestUpload.fileName}</p>
-            <p className="text-muted-foreground">
-              Status: {view.latestUpload.status} • Match quality:{" "}
-              {view.latestUpload.confidence
-                ? `${Math.round(view.latestUpload.confidence * 100)}%`
-                : "pending"}
-            </p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

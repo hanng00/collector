@@ -1,14 +1,13 @@
-import { getAuthContext } from "@/lib/auth";
-import { getUploadBucketName } from "@/lib/constants";
+import { uploadSchema } from "@/contracts";
+import { getUserFromEvent, normalizeHeader } from "@/features/auth/auth";
+import { ownerCanAccessWorkspace } from "@/features/auth/workspaceAuth";
+import { getShareLinkByToken } from "@/features/links/linkStore";
+import { LINK_TOKEN_HEADER, getUploadBucketName } from "@/lib/constants";
 import { ddbPut } from "@/lib/dynamo";
 import { newId } from "@/lib/ids";
 import { pk, sk } from "@/lib/keys";
 import { presignPutObject } from "@/lib/s3";
-import { getOwnerEmailForToken } from "@/lib/owner";
-import { ownerCanAccessWorkspace } from "@/lib/workspaceAuth";
-import { getShareLinkByToken } from "@/features/links/linkStore";
 import { badRequest, created, forbidden, unauthorized } from "@/utils/response";
-import { uploadSchema } from "@/contracts";
 import type { APIGatewayProxyHandler } from "aws-lambda";
 import { z } from "zod";
 
@@ -24,16 +23,15 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return badRequest("workspaceId is required");
   }
 
-  const { ownerToken, linkToken } = getAuthContext(event);
-  if (!ownerToken && !linkToken) return unauthorized();
+  const user = getUserFromEvent(event);
+  const linkToken = normalizeHeader(event, LINK_TOKEN_HEADER);
 
   let linkId: string | undefined;
-  if (ownerToken) {
-    const ownerEmail = await getOwnerEmailForToken(ownerToken);
-    if (!ownerEmail) return unauthorized("Invalid owner token");
-    const ok = await ownerCanAccessWorkspace({ ownerEmail, workspaceId });
-    if (!ok) return forbidden("Workspace not found or not accessible");
-  } else if (linkToken) {
+  const isOwner = user
+    ? await ownerCanAccessWorkspace({ userId: user.userId, workspaceId })
+    : false;
+  if (!isOwner) {
+    if (!linkToken) return unauthorized("Authentication or share link token required");
     const link = await getShareLinkByToken(linkToken);
     if (!link) return unauthorized("Invalid share link token");
     if (link.workspaceId !== workspaceId) return forbidden("Share link is not valid for this workspace");

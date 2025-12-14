@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform:
   - AWS::Serverless-2016-10-31
-Description: data-collector-backend
+Description: collector-backend
 
 Globals:
   Function:
@@ -24,6 +24,14 @@ Resources:
         AllowMethods: "'*'"
         AllowHeaders: "'*'"
         AllowOrigin: "'*'"
+      Auth:
+        DefaultAuthorizer: CognitoAuth
+        AddDefaultAuthorizerToCorsPreflight: false
+        Authorizers:
+          CognitoAuth:
+            UserPoolArn: !GetAtt UserPool.Arn
+            Identity:
+              Header: Authorization
   
   # <-- DynamoDB -->
   DataTable:
@@ -53,10 +61,56 @@ Resources:
         - Key: event-target
           Value: core-bus
 
+  # <-- Cognito User Pool -->
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: collector-user-pool
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      Policies:
+        SignInPolicy:
+          AllowedFirstAuthFactors:
+            - EMAIL_OTP
+            - PASSWORD
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: collector-client
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+
   # <-- S3 -->
   UploadBucket:
     Type: AWS::S3::Bucket
     Properties:
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - "*"
+            AllowedMethods:
+              - GET
+              - PUT
+              - HEAD
+            AllowedHeaders:
+              - "*"
+            ExposedHeaders:
+              - ETag
+            MaxAge: 3000
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -68,25 +122,6 @@ Resources:
         RestrictPublicBuckets: true
 
   # <-- Lambda Functions -->
-  CreateMagicLink:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: src/features/auth/createMagicLink.handler
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref DataTable
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGateway
-            Path: /auth/magic-links
-            Method: POST
-    Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        Sourcemap: true
-
   ValidateShareLink:
     Type: AWS::Serverless::Function
     Properties:
@@ -101,6 +136,11 @@ Resources:
             RestApiId: !Ref ApiGateway
             Path: /share-links/{token}
             Method: GET
+            # NOTE: This endpoint is intentionally PUBLIC.
+            # It is used for the marketing/demo flow (e.g. `token === "demo-token"`)
+            # and must remain reachable without Cognito auth.
+            Auth:
+              Authorizer: NONE
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -365,3 +405,13 @@ Outputs:
   # DataTable
   DataTableArn:
     Value: !GetAtt DataTable.Arn
+  # Cognito
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref UserPoolClient
+  CognitoRegion:
+    Description: AWS Region
+    Value: !Ref AWS::Region

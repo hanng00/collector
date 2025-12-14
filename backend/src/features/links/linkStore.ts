@@ -1,6 +1,6 @@
+import type { ShareLink } from "@/contracts";
 import { ddbGet, ddbPut, ddbUpdate } from "@/lib/dynamo";
 import { pk, sk } from "@/lib/keys";
-import type { ShareLink } from "@/contracts";
 
 type LinkTokenIndexItem = {
   PK: string;
@@ -11,6 +11,22 @@ type LinkTokenIndexItem = {
 };
 
 export async function getShareLinkByToken(token: string): Promise<ShareLink | null> {
+  // Public, stable demo token used for marketing.
+  if (token === "demo-token") {
+    return {
+      id: "lnk_demo",
+      workspaceId: "ws_demo",
+      token: "demo-token",
+      passcodeRequired: false,
+      status: "active",
+      permissions: {
+        // Keep this safe: demo should be view-only.
+        canUpload: false,
+        canEditRows: false,
+      },
+    };
+  }
+
   const idx = await ddbGet<LinkTokenIndexItem>({ PK: pk.linkToken(token), SK: sk.metadata });
   if (!idx) return null;
 

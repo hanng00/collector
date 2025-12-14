@@ -10,7 +10,7 @@ export function useShareView(linkId: string) {
     queryFn: async () => {
       if (!linkId) throw new Error("Missing linkId");
       const { data } = await apiClient.get(`/share-links/${linkId}`, {
-        headers: getAuthHeaders(),
+        headers: await getAuthHeaders(),
       });
       return shareViewSchema.parse(data);
     },

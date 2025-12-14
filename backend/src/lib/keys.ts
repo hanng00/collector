@@ -1,6 +1,6 @@
 export const pk = {
   workspace: (workspaceId: string) => `WORKSPACE#${workspaceId}`,
-  owner: (ownerEmail: string) => `OWNER#${ownerEmail}`,
+  owner: (ownerId: string) => `OWNER#${ownerId}`, // Now uses Cognito user ID (sub)
   ownerSession: (token: string) => `OWNERSESSION#${token}`,
   linkToken: (token: string) => `LINKTOKEN#${token}`,
 };

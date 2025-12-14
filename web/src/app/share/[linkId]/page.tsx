@@ -1,8 +1,8 @@
 "use client";
 
+import { SHARE_TOKEN_KEY } from "@/features/auth/config";
 import { useShareView } from "@/features/collector/api/use-share-view";
 import { ShareIntake } from "@/features/collector/components/share-intake";
-import { SHARE_TOKEN_KEY } from "@/lib/auth/config";
 import { useParams } from "next/navigation";
 import { useEffect } from "react";
 

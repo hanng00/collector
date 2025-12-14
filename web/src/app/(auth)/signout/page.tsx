@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useSignOut } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSignOut } from "@/features/auth/use-auth";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function SignOutPage() {
   const router = useRouter();

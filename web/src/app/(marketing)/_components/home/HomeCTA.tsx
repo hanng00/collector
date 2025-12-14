@@ -12,23 +12,26 @@ export function HomeCTA() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="space-y-2">
               <p className="font-serif text-2xl tracking-tight">
-                Try it with one request.
+                Try it with one request link.
               </p>
               <p className="text-muted-foreground">
-                Set up your columns, send the link, get clean data back.
+                Set up your columns, send the link, get clean rows back.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Passwordless email OTP for creators. Contributors don’t need an account.
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button asChild size="lg">
                 <Link href="/signin">
-                  Get started
+                  Create a request (email code)
                   <ArrowRight className="ml-2 size-4" />
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
                 <Link href="/share/demo-token">
                   <CheckCircle2 className="mr-2 size-4" />
-                  Preview a request
+                  See a live request
                 </Link>
               </Button>
             </div>

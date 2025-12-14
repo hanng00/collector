@@ -1,5 +1,5 @@
-export const OWNER_TOKEN_HEADER = "x-owner-token";
 export const LINK_TOKEN_HEADER = "x-link-token";
+export const AUTHORIZATION_HEADER = "authorization";
 
 const requireEnv = (key: string): string => {
   const value = process.env[key];

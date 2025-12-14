@@ -13,7 +13,7 @@ Schema-led data collection with magic links for owners, tokenized share links fo
 - Backend: `cd backend && sam validate` or `sam local start-api` once AWS credentials and envs are configured.
 
 ## Flow
-1) Owner requests magic link (`/auth/magic-links`) and manages workspaces.
+1) Owner signs in passwordlessly (Cognito email OTP) and manages workspaces.
 2) Owner defines columns and issues share links (`/share-links/{token}`) for contributors.
 3) Contributors upload files (`/workspaces/{id}/uploads`) and rows update asynchronously via S3-triggered extraction.
 4) Owners monitor uploads/rows and export structured data (`/workspaces/{id}/export`).

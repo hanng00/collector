@@ -6,6 +6,7 @@ import {
   GetCommand,
   PutCommand,
   QueryCommand,
+  type QueryCommandOutput,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { getDataTableName } from "./constants";
@@ -72,7 +73,7 @@ export async function ddbQueryAll<T>({
   let ExclusiveStartKey: Record<string, unknown> | undefined = undefined;
 
   do {
-    const res = await ddb.send(
+    const res: QueryCommandOutput = await ddb.send(
       new QueryCommand({
         TableName: getDataTableName(),
         KeyConditionExpression:

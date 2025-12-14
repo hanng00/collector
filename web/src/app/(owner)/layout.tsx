@@ -1,7 +1,7 @@
 "use client";
 
-import { ProtectedRoute } from "@/components/auth/protected-route";
 import { DashboardShell } from "@/components/dashboard-shell";
+import { ProtectedRoute } from "@/features/auth/protected-route";
 
 export default function OwnerLayout({
   children,

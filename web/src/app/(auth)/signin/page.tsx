@@ -5,30 +5,54 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useSignIn } from "@/hooks/use-auth";
+import { useConfirmMagicLink, useRequestMagicLink } from "@/features/auth/use-auth";
 import { AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function SignInPage() {
   const router = useRouter();
-  const signIn = useSignIn();
+  const requestMagicLink = useRequestMagicLink();
+  const confirmMagicLink = useConfirmMagicLink();
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [requestSuccess, setRequestSuccess] = useState(false);
+  const [signedInSuccess, setSignedInSuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccess(false);
+    setRequestSuccess(false);
+    setSignedInSuccess(false);
 
     try {
-      await signIn.mutateAsync({ email });
-      setSuccess(true);
-      setTimeout(() => router.push("/workspaces"), 600);
-    } catch (err) {
+      await requestMagicLink.mutateAsync(email);
+      setCodeSent(true);
+      // We switch to the code entry step immediately; don't show "signed in" success here.
+      setRequestSuccess(false);
+    } catch (err: unknown) {
+      const error = err as { message?: string };
       setError(
-        err instanceof Error ? err.message : "Failed to request magic link. Please try again."
+        error?.message || "Failed to send a code. Please try again."
+      );
+    }
+  };
+
+  const handleConfirmCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSignedInSuccess(false);
+
+    try {
+      await confirmMagicLink.mutateAsync({ email, code });
+      setSignedInSuccess(true);
+      setTimeout(() => router.push("/workspaces"), 600);
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      setError(
+        error?.message || "Invalid code. Please try again."
       );
     }
   };
@@ -57,46 +81,109 @@ export default function SignInPage() {
 
         <Card className="order-1 w-full border-border/60 bg-card/80 shadow-lg shadow-black/10 backdrop-blur lg:order-2">
         <CardHeader className="space-y-2 text-center">
-            <CardTitle className="dc-reveal dc-reveal-1 text-2xl">Sign in</CardTitle>
+            <CardTitle className="dc-reveal dc-reveal-1 text-2xl">
+              {codeSent ? "Enter your code" : "Sign in"}
+            </CardTitle>
             <CardDescription className="dc-reveal dc-reveal-2">
-              We'll email you a sign‑in link. No password needed.
+              {codeSent 
+                ? "We sent a code to your email. Enter it below to sign in."
+                : "We'll email you a sign‑in code. No password needed."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="size-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+          {codeSent ? (
+            <form onSubmit={handleConfirmCode} className="space-y-6">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="size-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-            {success && (
-              <Alert>
-                <AlertDescription>
-                  Sign‑in link issued. You&apos;re signed in on this device.
-                </AlertDescription>
-              </Alert>
-            )}
+              {signedInSuccess && (
+                <Alert>
+                  <AlertDescription>
+                    Signed in successfully!
+                  </AlertDescription>
+                </Alert>
+              )}
 
-            <div className="dc-reveal dc-reveal-3 space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={signIn.isPending}
-                autoComplete="email"
-                placeholder="you@company.com"
-              />
-            </div>
+              <div className="dc-reveal dc-reveal-3 space-y-2">
+                <Label htmlFor="code">Code</Label>
+                <Input
+                  id="code"
+                  type="text"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  required
+                  disabled={confirmMagicLink.isPending}
+                  placeholder="123456"
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={8}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Check your email for the code sent to {email}
+                </p>
+              </div>
 
-            <Button type="submit" className="dc-reveal dc-reveal-4 w-full" disabled={signIn.isPending}>
-              {signIn.isPending ? "Sending link..." : "Email me a sign-in link"}
-            </Button>
-          </form>
+              <Button type="submit" className="dc-reveal dc-reveal-4 w-full" disabled={confirmMagicLink.isPending}>
+                {confirmMagicLink.isPending ? "Signing in..." : "Sign in"}
+              </Button>
+
+              <div className="text-center text-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCodeSent(false);
+                    setCode("");
+                    setError(null);
+                    setRequestSuccess(false);
+                    setSignedInSuccess(false);
+                  }}
+                  className="text-muted-foreground hover:text-foreground underline"
+                >
+                  Use a different email
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleRequestCode} className="space-y-6">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="size-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {requestSuccess && (
+                <Alert>
+                  <AlertDescription>
+                    If an account exists (or was just created), we sent a code. Check your inbox and spam.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="dc-reveal dc-reveal-3 space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={requestMagicLink.isPending}
+                  autoComplete="email"
+                  placeholder="you@company.com"
+                />
+              </div>
+
+              <Button type="submit" className="dc-reveal dc-reveal-4 w-full" disabled={requestMagicLink.isPending}>
+                {requestMagicLink.isPending ? "Sending code..." : "Email me a sign-in code"}
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
       </div>

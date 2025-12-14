@@ -9,10 +9,10 @@ export function HomeHeader() {
       </div>
       <div className="flex items-center gap-2">
         <Button asChild variant="ghost" size="sm">
-          <Link href="/share/demo-token">See a request</Link>
+          <Link href="/share/demo-token">See a live request</Link>
         </Button>
         <Button asChild size="sm">
-          <Link href="/signin">Sign in</Link>
+          <Link href="/signin">Create a request</Link>
         </Button>
       </div>
     </header>

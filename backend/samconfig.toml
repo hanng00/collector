@@ -1,7 +1,7 @@
 version = 0.1
 
 [default.global.parameters]
-stack_name = "admin"
+stack_name = "collector"
 
 [default.build.parameters]
 cached = true
@@ -20,7 +20,7 @@ resolve_s3 = true
 
 [default.sync.parameters]
 watch = true
-stack_name = "admin"
+stack_name = "collector"
 
 [default.local_start_api.parameters]
 warm_containers = "EAGER"

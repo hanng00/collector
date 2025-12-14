@@ -1,10 +1,11 @@
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { Toaster } from "@/components/ui/sonner";
 import type { Metadata } from "next";
-import { Fraunces, Spline_Sans } from "next/font/google";
+import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
 
-const sans = Spline_Sans({
+const sans = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
   display: "swap",
@@ -31,7 +32,10 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${sans.variable} ${serif.variable} antialiased`}>
         <QueryProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {children}
+            <Toaster richColors />
+          </AuthProvider>
         </QueryProvider>
       </body>
     </html>

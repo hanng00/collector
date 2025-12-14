@@ -1,13 +1,12 @@
-import { getAuthContext } from "@/lib/auth";
+import { shareLinkSchema, workspaceSchema } from "@/contracts";
+import { getUserFromEvent } from "@/features/auth/auth";
+import { putLinkTokenIndex } from "@/features/links/linkStore";
 import { ddbPut } from "@/lib/dynamo";
 import { newId } from "@/lib/ids";
 import { pk, sk } from "@/lib/keys";
-import { getOwnerEmailForToken } from "@/lib/owner";
 import { created, unauthorized } from "@/utils/response";
-import { shareLinkSchema, workspaceSchema } from "@/contracts";
 import type { APIGatewayProxyHandler } from "aws-lambda";
 import { z } from "zod";
-import { putLinkTokenIndex } from "@/features/links/linkStore";
 
 const payloadSchema = z.object({
   name: z.string().min(1),
@@ -15,10 +14,8 @@ const payloadSchema = z.object({
 });
 
 export const handler: APIGatewayProxyHandler = async (event) => {
-  const { ownerToken } = getAuthContext(event);
-  if (!ownerToken) return unauthorized();
-  const ownerEmail = await getOwnerEmailForToken(ownerToken);
-  if (!ownerEmail) return unauthorized("Invalid owner token");
+  const user = getUserFromEvent(event);
+  if (!user) return unauthorized("Authentication required");
 
   const body = JSON.parse(event.body ?? "{}");
   const { name, description } = payloadSchema.parse(body);
@@ -45,7 +42,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     id: workspaceId,
     name,
     description,
-    ownerEmail,
+    ownerId: user.userId,
+    ownerEmail: user.email,
     createdAt: now,
     status: "active",
     limits: {
@@ -58,7 +56,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   // Owner -> workspace mapping for listing.
   await ddbPut({
-    PK: pk.owner(ownerEmail),
+    PK: pk.owner(user.userId),
     SK: sk.workspaceRef(workspaceId),
     workspaceId,
     createdAt: now,
@@ -76,7 +74,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     id: workspaceId,
     name,
     description,
-    ownerEmail,
+    ownerEmail: user.email,
     createdAt: now,
     status: "active",
     limits: {

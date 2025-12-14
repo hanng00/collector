@@ -1,10 +1,9 @@
-import { getAuthContext } from "@/lib/auth";
+import { shareLinkSchema } from "@/contracts";
+import { getUserFromEvent } from "@/features/auth/auth";
 import { ddbGet, ddbPut } from "@/lib/dynamo";
 import { newId } from "@/lib/ids";
 import { pk, sk } from "@/lib/keys";
-import { getOwnerEmailForToken } from "@/lib/owner";
 import { badRequest, created, forbidden, unauthorized } from "@/utils/response";
-import { shareLinkSchema } from "@/contracts";
 import type { APIGatewayProxyHandler } from "aws-lambda";
 import { z } from "zod";
 import { putLinkTokenIndex } from "./linkStore";
@@ -23,14 +22,12 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const workspaceId = event.pathParameters?.workspaceId;
   if (!workspaceId) return badRequest("workspaceId is required");
 
-  const { ownerToken } = getAuthContext(event);
-  if (!ownerToken) return unauthorized();
-  const ownerEmail = await getOwnerEmailForToken(ownerToken);
-  if (!ownerEmail) return unauthorized("Invalid owner token");
+  const user = getUserFromEvent(event);
+  if (!user) return unauthorized("Authentication required");
 
   const ws = await ddbGet<any>({ PK: pk.workspace(workspaceId), SK: sk.metadata });
   if (!ws) return forbidden("Workspace not found or not accessible");
-  if (ws.ownerEmail && ws.ownerEmail !== ownerEmail) return forbidden("Not workspace owner");
+  if (ws.ownerId && ws.ownerId !== user.userId) return forbidden("Not workspace owner");
 
   const body = JSON.parse(event.body ?? "{}");
   const parsed = payloadSchema.parse(body);

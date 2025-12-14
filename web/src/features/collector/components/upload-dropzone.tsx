@@ -1,10 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useMutation } from "@tanstack/react-query";
+import { useUploadFile } from "@/features/collector/api/use-upload-file";
 import { UploadCloud } from "lucide-react";
 import { useState } from "react";
 
@@ -15,18 +14,9 @@ type UploadDropzoneProps = {
 
 export function UploadDropzone({ workspaceId, onUploaded }: UploadDropzoneProps) {
   const [fileName, setFileName] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const upload = useMutation({
-    mutationFn: async (file: File) => {
-      // Stubbed upload flow: in production this will upload securely and attach the file to this record.
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      return `upl-${workspaceId}-${file.name}-${Date.now()}`;
-    },
-    onSuccess: (id) => {
-      setFileName(null);
-      onUploaded?.(id);
-    },
-  });
+  const upload = useUploadFile(workspaceId);
 
   return (
     <Card>
@@ -50,7 +40,16 @@ export function UploadDropzone({ workspaceId, onUploaded }: UploadDropzoneProps)
               const file = e.target.files?.[0];
               if (file) {
                 setFileName(file.name);
-                upload.mutate(file);
+                setError(null);
+                upload.mutate(file, {
+                  onSuccess: (id) => {
+                    setFileName(null);
+                    onUploaded?.(id);
+                  },
+                  onError: (err) => {
+                    setError(err instanceof Error ? err.message : "Upload failed");
+                  },
+                });
               }
             }}
             disabled={upload.isPending}
@@ -59,14 +58,10 @@ export function UploadDropzone({ workspaceId, onUploaded }: UploadDropzoneProps)
         {fileName && (
           <p className="text-sm text-muted-foreground">Selected: {fileName}</p>
         )}
-        <Button
-          variant="outline"
-          size="sm"
-          disabled
-          className="w-full justify-start"
-        >
-          Files get parsed automatically
-        </Button>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <p className="text-xs text-muted-foreground">
+          After upload, we’ll parse the file and add a new row automatically.
+        </p>
       </CardContent>
     </Card>
   );

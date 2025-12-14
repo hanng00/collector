@@ -1,8 +1,8 @@
+import { columnSchema, rowSchema, uploadSchema, type Column } from "@/contracts";
 import { ddbGet, ddbPut, ddbQueryAll, ddbUpdate } from "@/lib/dynamo";
+import { newId } from "@/lib/ids";
 import { pk, sk } from "@/lib/keys";
 import { getObjectBytes } from "@/lib/s3";
-import { newId } from "@/lib/ids";
-import { columnSchema, rowSchema, uploadSchema, type Column } from "@/contracts";
 
 function normalizeName(name: string) {
   return name.trim().toLowerCase().replaceAll(/\s+/g, " ");
@@ -11,8 +11,8 @@ function normalizeName(name: string) {
 function parseCsvFirstRow(text: string): { headers: string[]; values: string[] } | null {
   const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) return null;
-  const headers = lines[0].split(",").map((s) => s.trim().replaceAll(/^"|"$/g, ""));
-  const values = lines[1].split(",").map((s) => s.trim().replaceAll(/^"|"$/g, ""));
+  const headers = lines[0]?.split(",").map((s) => s.trim().replaceAll(/^"|"$/g, "")) ?? [];
+  const values = lines[1]?.split(",").map((s) => s.trim().replaceAll(/^"|"$/g, "")) ?? [];
   return { headers, values };
 }
 

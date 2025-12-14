@@ -90,7 +90,8 @@ export const workspaceLimitsSchema = z.object({
 export const workspaceSchema = z.object({
   id: z.string(),
   name: z.string(),
-  ownerEmail: z.string().email().optional(),
+  ownerId: z.string().optional(), // Cognito user ID (sub)
+  ownerEmail: z.string().email().optional(), // Kept for backward compatibility
   description: z.string().optional(),
   createdAt: z.string(),
   status: z.enum(["active", "archived"]).default("active"),

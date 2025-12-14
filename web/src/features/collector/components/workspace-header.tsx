@@ -7,18 +7,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiClient, getAuthHeaders } from "@/features/collector/api/client";
 import { getBackendUrl } from "@/lib/config";
+import { getPublicAppUrl } from "@/lib/constants";
 import type { Workspace } from "@contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 type WorkspaceHeaderProps = {
   workspace: Workspace;
+  rowsCount?: number;
+  uploadsCount?: number;
+  lastActivityAt?: string;
 };
 
-export function WorkspaceHeader({ workspace }: WorkspaceHeaderProps) {
+export function WorkspaceHeader({
+  workspace,
+  rowsCount,
+  uploadsCount,
+  lastActivityAt,
+}: WorkspaceHeaderProps) {
   const queryClient = useQueryClient();
   const shareToken = workspace.shareLinks[0]?.token;
   const shareUrl = shareToken
-    ? `${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.localhost"}/share/${shareToken}`
+    ? `${
+        process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000"
+      }/share/${shareToken}`
     : "Share link not issued";
 
   const createShareLink = useMutation({
@@ -26,21 +37,34 @@ export function WorkspaceHeader({ workspace }: WorkspaceHeaderProps) {
       const { data } = await apiClient.post(
         `/workspaces/${workspace.id}/share-links`,
         {},
-        { headers: getAuthHeaders() }
+        { headers: await getAuthHeaders() }
       );
       return data.link as { token: string };
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["workspace", workspace.id] });
+      await queryClient.invalidateQueries({
+        queryKey: ["workspace", workspace.id],
+      });
       await queryClient.invalidateQueries({ queryKey: ["owner-workspaces"] });
     },
   });
 
+  const copyShareLink = async () => {
+    const token = shareToken ?? (await createShareLink.mutateAsync()).token;
+    const url = `${
+      getPublicAppUrl()
+    }/share/${token}`;
+    await navigator.clipboard.writeText(url);
+  };
+
   const exportCsv = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`${getBackendUrl()}/workspaces/${workspace.id}/export`, {
-        headers: getAuthHeaders(),
-      });
+      const res = await fetch(
+        `${getBackendUrl()}/workspaces/${workspace.id}/export`,
+        {
+          headers: await getAuthHeaders(),
+        }
+      );
       if (!res.ok) throw new Error(`Export failed (${res.status})`);
       const text = await res.text();
       return text;
@@ -64,10 +88,23 @@ export function WorkspaceHeader({ workspace }: WorkspaceHeaderProps) {
           <p className="text-muted-foreground">{workspace.description}</p>
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">{workspace.columns.length} columns</Badge>
-            <Badge variant="outline">{workspace.shareLinks.length} share links</Badge>
+            <Badge variant="outline">
+              {workspace.shareLinks.length} share links
+            </Badge>
+            {typeof rowsCount === "number" && (
+              <Badge variant="outline">{rowsCount} rows</Badge>
+            )}
+            {typeof uploadsCount === "number" && (
+              <Badge variant="outline">{uploadsCount} files</Badge>
+            )}
             {workspace.limits && (
               <Badge variant="outline">
                 {workspace.limits.maxUploadSizeMb} MB max upload
+              </Badge>
+            )}
+            {lastActivityAt && (
+              <Badge variant="outline">
+                Last activity {new Date(lastActivityAt).toLocaleString()}
               </Badge>
             )}
           </div>
@@ -93,19 +130,25 @@ export function WorkspaceHeader({ workspace }: WorkspaceHeaderProps) {
       <CardContent className="space-y-2">
         <Label htmlFor="share-url">Request link (no signup needed)</Label>
         <div className="flex items-center gap-2">
-          <Input id="share-url" readOnly value={shareUrl} className="font-mono" />
+          <Input
+            id="share-url"
+            readOnly
+            value={shareUrl}
+            className="font-mono"
+          />
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => navigator.clipboard.writeText(shareUrl)}
-            disabled={!shareToken}
+            onClick={copyShareLink}
+            disabled={createShareLink.isPending}
           >
             Copy
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Anyone with this link can add data and upload files—no account needed. (Passcode protection coming soon.)
+          Anyone with this link can add data and upload files—no account needed.
+          (Passcode protection coming soon.)
         </p>
       </CardContent>
     </Card>

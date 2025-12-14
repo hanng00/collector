@@ -1,18 +1,15 @@
-import { getAuthContext } from "@/lib/auth";
+import { columnSchema, shareLinkSchema, workspaceSchema, type Workspace } from "@/contracts";
+import { getUserFromEvent } from "@/features/auth/auth";
 import { ddbBatchGet, ddbQueryAll } from "@/lib/dynamo";
 import { pk, sk } from "@/lib/keys";
-import { getOwnerEmailForToken } from "@/lib/owner";
 import { success, unauthorized } from "@/utils/response";
-import { columnSchema, shareLinkSchema, workspaceSchema, type Workspace } from "@/contracts";
 import type { APIGatewayProxyHandler } from "aws-lambda";
 
 export const handler: APIGatewayProxyHandler = async (event) => {
-  const { ownerToken } = getAuthContext(event);
-  if (!ownerToken) return unauthorized();
-  const ownerEmail = await getOwnerEmailForToken(ownerToken);
-  if (!ownerEmail) return unauthorized("Invalid owner token");
+  const user = getUserFromEvent(event);
+  if (!user) return unauthorized("Authentication required");
 
-  const refs = await ddbQueryAll<any>({ PK: pk.owner(ownerEmail), beginsWithSK: "WORKSPACE#" });
+  const refs = await ddbQueryAll<any>({ PK: pk.owner(user.userId), beginsWithSK: "WORKSPACE#" });
   const workspaceIds = refs.map((r) => (r.workspaceId as string | undefined) ?? String(r.SK).replace("WORKSPACE#", ""));
 
   const metas = await ddbBatchGet<any>(

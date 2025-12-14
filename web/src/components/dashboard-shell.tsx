@@ -1,20 +1,21 @@
 "use client";
 
-import { UserMenu } from "@/components/auth/user-menu";
 import {
-    Sidebar,
-    SidebarContent,
-    SidebarFooter,
-    SidebarGroup,
-    SidebarGroupContent,
-    SidebarGroupLabel,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-    SidebarProvider,
-    SidebarTrigger,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { UserMenu } from "@/features/auth/user-menu";
+import { WorkspaceTopbar } from "@/features/collector/components/workspace-topbar";
 import { navItems } from "@/lib/nav-items";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -24,6 +25,7 @@ interface DashboardShellProps {
 
 export function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname();
+  const isWorkspaceDetail = /^\/workspaces\/[^/]+$/.test(pathname);
 
   return (
     <SidebarProvider>
@@ -34,7 +36,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
               Collector
             </span>
             <span className="group-data-[collapsible=icon]:block hidden font-serif text-lg tracking-tight transition-opacity delay-200">
-              DC
+              C
             </span>
           </div>
         </SidebarHeader>
@@ -76,12 +78,18 @@ export function DashboardShell({ children }: DashboardShellProps) {
       <main className="flex min-h-screen flex-col grow bg-background">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/70 px-4 backdrop-blur">
           <SidebarTrigger />
-          <div className="text-xs text-muted-foreground">
-            Keep it clean. Export when ready.
-          </div>
+          {isWorkspaceDetail ? (
+            <div className="min-w-0 flex-1 pl-4">
+              <WorkspaceTopbar />
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground">
+              Keep it clean. Export when ready.
+            </div>
+          )}
         </header>
         <div className="grow">
-          <div className="container-ledger py-8">{children}</div>
+          {isWorkspaceDetail ? <div className="h-[calc(100vh-3.5rem)]">{children}</div> : <div className="container-ledger py-8">{children}</div>}
         </div>
       </main>
     </SidebarProvider>

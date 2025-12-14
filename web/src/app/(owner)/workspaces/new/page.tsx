@@ -21,9 +21,16 @@ export default function NewWorkspacePage() {
       const { data } = await apiClient.post(
         "/workspaces",
         { name, description: description.trim() || undefined },
-        { headers: getAuthHeaders() }
+        { headers: await getAuthHeaders() }
       );
-      return workspaceSchema.parse(data.workspace);
+      const ws = workspaceSchema.parse(data.workspace);
+      // Issue a share link immediately so the primary artifact is ready to copy/share.
+      await apiClient.post(
+        `/workspaces/${ws.id}/share-links`,
+        {},
+        { headers: await getAuthHeaders() }
+      );
+      return ws;
     },
     onSuccess: (ws) => {
       router.push(`/workspaces/${ws.id}`);
@@ -31,7 +38,7 @@ export default function NewWorkspacePage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-8">
       <div>
         <p className="text-sm font-medium text-muted-foreground">Workspaces</p>
         <h1 className="text-3xl font-normal font-serif tracking-tight">New request</h1>
@@ -43,7 +50,7 @@ export default function NewWorkspacePage() {
       <Card className="max-w-xl">
         <CardHeader>
           <CardTitle>Basics</CardTitle>
-          <CardDescription>Give it a name and tell people what you're collecting.</CardDescription>
+          <CardDescription>Give it a name and tell people what you&apos;re collecting.</CardDescription>
         </CardHeader>
         <CardContent>
           <form

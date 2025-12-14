@@ -15,7 +15,6 @@ sam build
 ```
 
 ## Functions
-- `CreateMagicLink` — POST `/auth/magic-links`
 - `CreateWorkspace` / `ListWorkspaces` / `GetWorkspace` — `/workspaces`
 - `CreateShareLink` — POST `/workspaces/{workspaceId}/share-links`
 - `ValidateShareLink` — GET `/share-links/{token}`

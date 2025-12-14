@@ -1,11 +1,11 @@
-import { getAuthContext } from "@/lib/auth";
+import type { Row } from "@/contracts";
+import { getUserFromEvent, normalizeHeader } from "@/features/auth/auth";
+import { ownerCanAccessWorkspace } from "@/features/auth/workspaceAuth";
+import { getShareLinkByToken } from "@/features/links/linkStore";
+import { LINK_TOKEN_HEADER } from "@/lib/constants";
 import { ddbQueryAll } from "@/lib/dynamo";
 import { pk } from "@/lib/keys";
-import { getOwnerEmailForToken } from "@/lib/owner";
-import { ownerCanAccessWorkspace } from "@/lib/workspaceAuth";
-import { getShareLinkByToken } from "@/features/links/linkStore";
 import { badRequest, forbidden, success, unauthorized } from "@/utils/response";
-import type { Row } from "@/contracts";
 import type { APIGatewayProxyHandler } from "aws-lambda";
 
 export const handler: APIGatewayProxyHandler = async (event) => {
@@ -14,15 +14,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return badRequest("workspaceId is required");
   }
 
-  const { ownerToken, linkToken } = getAuthContext(event);
-  if (!ownerToken && !linkToken) return unauthorized();
+  const user = getUserFromEvent(event);
+  const linkToken = normalizeHeader(event, LINK_TOKEN_HEADER);
 
-  if (ownerToken) {
-    const ownerEmail = await getOwnerEmailForToken(ownerToken);
-    if (!ownerEmail) return unauthorized("Invalid owner token");
-    const ok = await ownerCanAccessWorkspace({ ownerEmail, workspaceId });
-    if (!ok) return forbidden("Workspace not found or not accessible");
-  } else if (linkToken) {
+  const isOwner = user
+    ? await ownerCanAccessWorkspace({ userId: user.userId, workspaceId })
+    : false;
+  if (!isOwner) {
+    if (!linkToken) return unauthorized("Authentication or share link token required");
     const link = await getShareLinkByToken(linkToken);
     if (!link) return unauthorized("Invalid share link token");
     if (link.workspaceId !== workspaceId) return forbidden("Share link is not valid for this workspace");

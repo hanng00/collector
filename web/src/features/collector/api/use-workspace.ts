@@ -25,7 +25,7 @@ export function useWorkspace(workspaceId: string) {
       if (!workspaceId) throw new Error("Missing workspaceId");
 
       const { data } = await apiClient.get(`/workspaces/${workspaceId}`, {
-        headers: getAuthHeaders(),
+        headers: await getAuthHeaders(),
       });
 
       const workspace = workspaceSchema.parse(data.workspace ?? data);

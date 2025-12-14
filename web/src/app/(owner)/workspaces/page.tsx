@@ -11,7 +11,7 @@ export default function WorkspacesPage() {
   const workspaces = data?.workspaces ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">Workspaces</p>
