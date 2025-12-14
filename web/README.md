@@ -19,3 +19,8 @@ bun dev
 Environment:
 - `NEXT_PUBLIC_API_URL` — backend base URL (optional; defaults to `http://localhost:3000`)
 - `NEXT_PUBLIC_APP_URL` — used to render share link previews
+- `NEXT_PUBLIC_COGNITO_USER_POOL_ID` — Cognito User Pool ID (from AWS SAM stack outputs)
+- `NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID` — Cognito User Pool Client ID (from AWS SAM stack outputs)
+- `NEXT_PUBLIC_AWS_REGION` — AWS Region (e.g., `eu-west-1`)
+
+Create a `.env.local` file in the `web/` directory with these variables. Get the Cognito values from your deployed AWS SAM stack outputs.

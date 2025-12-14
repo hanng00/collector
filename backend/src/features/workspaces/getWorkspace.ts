@@ -1,11 +1,12 @@
 import {
-  columnSchema,
-  rowSchema,
-  shareLinkSchema,
-  uploadSchema,
-  workspaceSchema,
+    columnSchema,
+    rowSchema,
+    shareLinkSchema,
+    uploadSchema,
+    workspaceSchema,
 } from "@/contracts";
 import { getUserFromEvent } from "@/features/auth/auth";
+import { ownerCanAccessWorkspace } from "@/features/auth/workspaceAuth";
 import { ddbGet, ddbQueryAll } from "@/lib/dynamo";
 import { pk, sk } from "@/lib/keys";
 import { forbidden, notFound, success, unauthorized } from "@/utils/response";
@@ -20,7 +21,13 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   const wsItem = await ddbGet<any>({ PK: pk.workspace(workspaceId), SK: sk.metadata });
   if (!wsItem) return notFound("Workspace not found");
-  if (wsItem.ownerId && wsItem.ownerId !== user.userId) return forbidden("Not workspace owner");
+  const canAccess = await ownerCanAccessWorkspace({
+    userId: user.userId,
+    ownerEmail: user.email,
+    workspaceId,
+    workspace: wsItem,
+  });
+  if (!canAccess) return forbidden("Not workspace owner");
 
   const colItems = await ddbQueryAll<any>({ PK: pk.workspace(workspaceId), beginsWithSK: "COLUMN#" });
   const columns = colItems

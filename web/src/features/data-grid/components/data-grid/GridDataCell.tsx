@@ -1,85 +1,121 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { toDisplayValue } from "@/features/data-grid/domain/grid";
+import { toDisplayValueForColumn } from "@/features/data-grid/domain/grid";
 import type { Column, Row } from "@contracts";
 import type { ClipboardEventHandler, KeyboardEventHandler } from "react";
-import { useEffect, useRef } from "react";
+import { useCallback } from "react";
+import {
+  DateCellEditor,
+  EnumCellEditor,
+  getDefaultEditorValue,
+  TextCellEditor,
+} from "./cellEditors";
 
 export function GridDataCell(props: {
-  row: Row;
   column: Column;
   canEdit: boolean;
-  isActive: boolean;
+  isSelected: boolean;
+  isEditing: boolean;
 
   value: Row["values"][string];
+  editDefaultValue?: string;
 
-  onFocus: () => void;
-  onChange: (raw: string) => void;
-  onBlur: () => void;
-  onKeyDown: KeyboardEventHandler<HTMLInputElement>;
+  onSelect: () => void;
+  onBeginEdit: () => void;
+  onCancelEdit: () => void;
+  onSave: (raw: string) => void;
+  onKeyDownSelected: KeyboardEventHandler<HTMLDivElement>;
   onPaste: ClipboardEventHandler<HTMLInputElement>;
 
-  inputRef: (el: HTMLInputElement | null) => void;
+  cellRef: (el: HTMLDivElement | null) => void;
+  inputRef: (el: HTMLElement | null) => void;
 }) {
-  const { row, column, canEdit, isActive, value, onFocus, onChange, onBlur, onKeyDown, onPaste, inputRef } =
-    props;
-  const displayValue = toDisplayValue(value);
-  const internalInputRef = useRef<HTMLInputElement | null>(null);
+  const {
+    column,
+    canEdit,
+    isSelected,
+    isEditing,
+    value,
+    editDefaultValue,
+    onSelect,
+    onBeginEdit,
+    onCancelEdit,
+    onSave,
+    onKeyDownSelected,
+    onPaste,
+    cellRef,
+    inputRef,
+  } = props;
+  const displayValue = toDisplayValueForColumn(column, value);
+  const editorDefaultValue = getDefaultEditorValue({
+    column,
+    value,
+    seeded: editDefaultValue,
+  });
 
-  // Auto-focus input when cell becomes active
-  useEffect(() => {
-    if (isActive && canEdit && internalInputRef.current) {
-      queueMicrotask(() => {
-        internalInputRef.current?.focus();
-        internalInputRef.current?.select();
-      });
-    }
-  }, [isActive, canEdit]);
-
-  // Sync refs
-  useEffect(() => {
-    inputRef(internalInputRef.current);
-  }, [inputRef]);
-
-  // Read-only: render like a plain cell (no input chrome).
-  if (!canEdit) {
-    return (
-      <div className="min-w-[180px] h-8 px-2 py-1 flex items-center">
-        <span className="text-sm text-foreground truncate">
-          {displayValue || (
-            <span className="text-muted-foreground">{column.type === "date" ? "YYYY-MM-DD" : ""}</span>
-          )}
-        </span>
-      </div>
-    );
-  }
+  const handleCancel = useCallback(() => {
+    onCancelEdit();
+  }, [onCancelEdit]);
 
   return (
     <div
-      className="min-w-[180px] h-8 px-2 py-1 flex items-center cursor-cell"
-      onClick={onFocus}
-      onDoubleClick={onFocus}
+      ref={cellRef}
+      tabIndex={0}
+      className={[
+        "min-w-[180px] h-8 px-2 py-1 flex items-center cursor-cell outline-none",
+        isSelected ? "bg-primary/5" : null,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      onClick={onSelect}
+      onDoubleClick={() => {
+        if (canEdit) onBeginEdit();
+      }}
+      onKeyDown={onKeyDownSelected}
     >
-      {isActive ? (
-        <Input
-          ref={(el) => {
-            internalInputRef.current = el;
-            inputRef(el);
-          }}
-          value={displayValue}
-          onFocus={onFocus}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={onBlur}
-          onKeyDown={onKeyDown}
-          onPaste={onPaste}
-          placeholder={column.type === "date" ? "YYYY-MM-DD" : ""}
-          className="h-auto w-full rounded-none border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-        />
+      {canEdit && isEditing ? (
+        column.type === "enum" ? (
+          <EnumCellEditor
+            column={column}
+            defaultValue={editorDefaultValue}
+            editorRef={inputRef}
+            onSave={onSave}
+            onCancel={handleCancel}
+          />
+        ) : column.type === "date" ? (
+          <DateCellEditor
+            column={column}
+            defaultValue={editorDefaultValue}
+            editorRef={inputRef}
+            onSave={onSave}
+            onCancel={handleCancel}
+            onPaste={onPaste}
+          />
+        ) : (
+          <TextCellEditor
+            column={column}
+            defaultValue={editorDefaultValue}
+            editorRef={inputRef}
+            onSave={onSave}
+            onCancel={handleCancel}
+            onPaste={onPaste}
+            inputType={
+              column.type === "number"
+                ? "number"
+                : column.type === "email"
+                  ? "email"
+                  : column.type === "url"
+                    ? "url"
+                    : undefined
+            }
+          />
+        )
       ) : (
         <span className="text-sm text-foreground truncate">
           {displayValue || (
-            <span className="text-muted-foreground">{column.type === "date" ? "YYYY-MM-DD" : ""}</span>
+            <span className="text-muted-foreground">
+              {column.type === "date" ? "YYYY-MM-DD" : ""}
+            </span>
           )}
         </span>
       )}

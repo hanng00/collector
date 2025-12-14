@@ -19,7 +19,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   
   const linkToken = normalizeHeader(event, LINK_TOKEN_HEADER);
 
-  const isOwner = await ownerCanAccessWorkspace({ userId: user.userId, workspaceId });
+  const isOwner = await ownerCanAccessWorkspace({ userId: user.userId, ownerEmail: user.email, workspaceId });
   if (!isOwner) {
     // Signed-in contributor path: must also present a valid share link token.
     if (!linkToken) return forbidden("Workspace not found or not accessible");

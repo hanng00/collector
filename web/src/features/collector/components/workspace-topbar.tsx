@@ -1,26 +1,42 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { apiClient, getAuthHeaders } from "@/features/collector/api/client";
 import { useUploadFile } from "@/features/collector/api/use-upload-file";
 import { useWorkspace } from "@/features/collector/api/use-workspace";
+import { useWorkspaceFilesSidebarVisibility } from "@/features/collector/state/workspace-ui";
 import { getBackendUrl } from "@/lib/config";
 import { getPublicAppUrl } from "@/lib/constants";
 import type { Workspace } from "@contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Download, FileText, Link2, Upload } from "lucide-react";
+import { Download, FileText, Link2, PanelRightClose, PanelRightOpen, Upload, UserPlus } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+
+type GuidedFlowWindow = Window & {
+  __startGuidedFlow?: (() => void) | undefined;
+};
 
 export function WorkspaceTopbar() {
   const params = useParams<{ workspaceId: string }>();
   const workspaceId = params.workspaceId;
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { visible: filesVisible, toggle: toggleFilesVisible } =
+    useWorkspaceFilesSidebarVisibility();
 
   const { data } = useWorkspace(workspaceId);
   const workspace: Workspace | undefined = data?.workspace;
+  const uploadsCount = data?.uploads?.length ?? 0;
   const descriptionsOk =
     !!workspace?.columns?.length &&
     workspace.columns.every((c) => (c.description ?? "").trim().length > 0);
@@ -72,12 +88,20 @@ export function WorkspaceTopbar() {
 
   const uploadFile = useUploadFile(workspaceId);
 
+  const [linkCopied, setLinkCopied] = useState(false);
+
   const copyShareLink = async () => {
     const shareToken = workspace?.shareLinks[0]?.token;
     const token = shareToken ?? (await createShareLink.mutateAsync()).token;
     const url = `${getPublicAppUrl()}/share/${token}`;
     await navigator.clipboard.writeText(url);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
   };
+
+  const shareUrl = workspace?.shareLinks[0]?.token
+    ? `${getPublicAppUrl()}/share/${workspace.shareLinks[0].token}`
+    : "";
 
   return (
     <div className="flex min-w-0 items-center justify-between gap-3">
@@ -97,9 +121,8 @@ export function WorkspaceTopbar() {
               className="h-6 text-[11px]"
               onClick={() => {
                 // Call the guided flow function exposed by WorkspaceGrid
-                if ((window as any).__startGuidedFlow) {
-                  (window as any).__startGuidedFlow();
-                }
+                const fn = (window as GuidedFlowWindow).__startGuidedFlow;
+                if (typeof fn === "function") fn();
               }}
             >
               <FileText className="mr-1 size-3" />
@@ -110,27 +133,70 @@ export function WorkspaceTopbar() {
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="hidden md:flex items-center gap-2">
-          <Input
-            readOnly
-            value={
-              workspace?.shareLinks[0]?.token
-                ? `${getPublicAppUrl()}/share/${workspace.shareLinks[0].token}`
-                : ""
-            }
-            placeholder="Share link"
-            className="h-8 w-[360px] font-mono text-xs"
-          />
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={createShareLink.isPending || !descriptionsOk}
+            >
+              <UserPlus className="mr-2 size-4" />
+              Invite
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[400px]">
+            <DropdownMenuLabel>Share link</DropdownMenuLabel>
+            <div className="px-2 pb-2">
+              <Input
+                readOnly
+                value={shareUrl}
+                placeholder="No share link created"
+                className="h-8 font-mono text-xs"
+                onFocus={(e) => e.target.select()}
+              />
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Anyone with this link can add data and upload files—no account needed.
+              </p>
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => void copyShareLink()}
+              disabled={!shareUrl || linkCopied}
+            >
+              <Link2 className="size-4" />
+              {linkCopied ? "Copied!" : "Copy link"}
+            </DropdownMenuItem>
+            {!shareUrl && (
+              <DropdownMenuItem
+                onClick={() => createShareLink.mutate()}
+                disabled={createShareLink.isPending}
+              >
+                <Link2 className="size-4" />
+                Create share link
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Button
           size="sm"
           variant="outline"
-          onClick={() => void copyShareLink()}
-          disabled={createShareLink.isPending || !descriptionsOk}
+          onClick={() => toggleFilesVisible()}
+          aria-pressed={filesVisible}
+          title={filesVisible ? "Hide files" : "Show files"}
+          disabled={!descriptionsOk}
         >
-          <Link2 className="mr-2 size-4" />
-          Copy link
+          {filesVisible ? (
+            <PanelRightClose className="mr-2 size-4" />
+          ) : (
+            <PanelRightOpen className="mr-2 size-4" />
+          )}
+          Files
+          {uploadsCount > 0 ? (
+            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+              {uploadsCount}
+            </span>
+          ) : null}
         </Button>
 
         <input

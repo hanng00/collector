@@ -39,6 +39,8 @@ export const uploadSchema = z.object({
   rowId: z.string().optional(),
   linkId: z.string().optional(),
   fileName: z.string(),
+  fileSizeBytes: z.number().int().nonnegative().optional(),
+  uploadedBy: z.string().optional(),
   status: uploadStatusSchema,
   s3Key: z.string().optional(),
   parsedFields: z.record(z.string(), z.unknown()).optional(),

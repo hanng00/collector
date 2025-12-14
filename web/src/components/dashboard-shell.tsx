@@ -75,8 +75,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
           </div>
         </SidebarFooter>
       </Sidebar>
-      <main className="flex min-h-screen flex-col grow bg-background">
-        <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/70 px-4 backdrop-blur">
+      <main className="flex h-screen flex-col overflow-hidden bg-background">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b bg-background/70 px-4 backdrop-blur">
           <SidebarTrigger />
           {isWorkspaceDetail ? (
             <div className="min-w-0 flex-1 pl-4">
@@ -88,8 +88,14 @@ export function DashboardShell({ children }: DashboardShellProps) {
             </div>
           )}
         </header>
-        <div className="grow">
-          {isWorkspaceDetail ? <div className="h-[calc(100vh-3.5rem)]">{children}</div> : <div className="container-ledger py-8">{children}</div>}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {isWorkspaceDetail ? (
+            <div className="h-full min-h-0 overflow-hidden">
+              {children}
+            </div>
+          ) : (
+            <div className="container-ledger py-8 overflow-auto">{children}</div>
+          )}
         </div>
       </main>
     </SidebarProvider>

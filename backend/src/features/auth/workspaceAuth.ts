@@ -5,24 +5,32 @@ export async function ownerCanAccessWorkspace({
   userId,
   ownerEmail,
   workspaceId,
+  workspace,
 }: {
   userId?: string;
   ownerEmail?: string;
   workspaceId: string;
+  workspace?: { ownerId?: string; ownerEmail?: string } | null;
 }): Promise<boolean> {
-  const ws = await ddbGet<any>({ PK: pk.workspace(workspaceId), SK: sk.metadata });
+  const ws =
+    workspace ??
+    (await ddbGet<any>({ PK: pk.workspace(workspaceId), SK: sk.metadata }));
   if (!ws) return false;
-  
-  // Check by userId (Cognito) first, then fallback to email for backward compatibility
-  if (userId && ws.ownerId) {
+
+  // If the workspace has a Cognito ownerId set, require matching userId.
+  if (ws.ownerId) {
+    if (!userId) return false;
     return ws.ownerId === userId;
   }
-  if (ownerEmail && ws.ownerEmail) {
+
+  // Otherwise, if the workspace is owned by email (legacy), require matching email.
+  if (ws.ownerEmail) {
+    if (!ownerEmail) return false;
     return ws.ownerEmail === ownerEmail;
   }
-  
-  // If workspace has no owner set, allow access (legacy workspaces)
-  return !ws.ownerId && !ws.ownerEmail;
+
+  // If workspace has no owner set, allow access (legacy/public workspaces)
+  return true;
 }
 
 

@@ -11,6 +11,7 @@ export function useUploadFile(workspaceId: string) {
       const { data } = await apiClient.post(`/workspaces/${workspaceId}/uploads`, {
         fileName: file.name,
         contentType: file.type || "application/octet-stream",
+        fileSizeBytes: file.size,
       });
 
       const payload = z

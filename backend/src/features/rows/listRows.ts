@@ -18,7 +18,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const linkToken = normalizeHeader(event, LINK_TOKEN_HEADER);
 
   const isOwner = user
-    ? await ownerCanAccessWorkspace({ userId: user.userId, workspaceId })
+    ? await ownerCanAccessWorkspace({ userId: user.userId, ownerEmail: user.email, workspaceId })
     : false;
   if (!isOwner) {
     if (!linkToken) return unauthorized("Authentication or share link token required");

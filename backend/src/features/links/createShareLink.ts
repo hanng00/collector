@@ -1,5 +1,6 @@
 import { shareLinkSchema } from "@/contracts";
 import { getUserFromEvent } from "@/features/auth/auth";
+import { ownerCanAccessWorkspace } from "@/features/auth/workspaceAuth";
 import { ddbGet, ddbPut } from "@/lib/dynamo";
 import { newId } from "@/lib/ids";
 import { pk, sk } from "@/lib/keys";
@@ -27,7 +28,13 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   const ws = await ddbGet<any>({ PK: pk.workspace(workspaceId), SK: sk.metadata });
   if (!ws) return forbidden("Workspace not found or not accessible");
-  if (ws.ownerId && ws.ownerId !== user.userId) return forbidden("Not workspace owner");
+  const isOwner = await ownerCanAccessWorkspace({
+    userId: user.userId,
+    ownerEmail: user.email,
+    workspaceId,
+    workspace: ws,
+  });
+  if (!isOwner) return forbidden("Not workspace owner");
 
   const body = JSON.parse(event.body ?? "{}");
   const parsed = payloadSchema.parse(body);

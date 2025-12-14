@@ -1,5 +1,6 @@
 import { columnSchema, rowSchema } from "@/contracts";
 import { getUserFromEvent } from "@/features/auth/auth";
+import { ownerCanAccessWorkspace } from "@/features/auth/workspaceAuth";
 import { ddbGet, ddbQueryAll } from "@/lib/dynamo";
 import { pk, sk } from "@/lib/keys";
 import { badRequest, forbidden, unauthorized } from "@/utils/response";
@@ -16,7 +17,13 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   const ws = await ddbGet<any>({ PK: pk.workspace(workspaceId), SK: sk.metadata });
   if (!ws) return forbidden("Workspace not found or not accessible");
-  if (ws.ownerId && ws.ownerId !== user.userId) return forbidden("Not workspace owner");
+  const isOwner = await ownerCanAccessWorkspace({
+    userId: user.userId,
+    ownerEmail: user.email,
+    workspaceId,
+    workspace: ws,
+  });
+  if (!isOwner) return forbidden("Not workspace owner");
 
   const colItems = await ddbQueryAll<any>({ PK: pk.workspace(workspaceId), beginsWithSK: "COLUMN#" });
   const columns = colItems

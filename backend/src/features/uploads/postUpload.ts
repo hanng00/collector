@@ -14,6 +14,7 @@ import { z } from "zod";
 const payloadSchema = z.object({
   fileName: z.string().min(1),
   contentType: z.string().optional(),
+  fileSizeBytes: z.number().int().nonnegative().optional(),
   rowId: z.string().optional(),
 });
 
@@ -28,7 +29,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   let linkId: string | undefined;
   const isOwner = user
-    ? await ownerCanAccessWorkspace({ userId: user.userId, workspaceId })
+    ? await ownerCanAccessWorkspace({ userId: user.userId, ownerEmail: user.email, workspaceId })
     : false;
   if (!isOwner) {
     if (!linkToken) return unauthorized("Authentication or share link token required");
@@ -40,7 +41,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   const body = JSON.parse(event.body ?? "{}");
-  const { fileName, contentType, rowId } = payloadSchema.parse(body);
+  const { fileName, contentType, fileSizeBytes, rowId } = payloadSchema.parse(body);
 
   const uploadId = newId("upl");
   const safeFileName = fileName.replaceAll("/", "_");
@@ -53,6 +54,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     rowId,
     linkId,
     fileName,
+    fileSizeBytes,
+    uploadedBy: user?.email ?? (linkId ? "Share link" : undefined),
     status: "pending",
     s3Key,
     createdAt: now,

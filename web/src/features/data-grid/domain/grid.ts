@@ -34,6 +34,10 @@ export function ensureAllColumnValues(values: Row["values"], columns: Column[]):
 }
 
 export function coerceCellValue(column: Column, raw: string): Row["values"][string] {
+  // Important: for text-like columns we must NOT trim on every keystroke,
+  // otherwise the input becomes impossible to type spaces into (React will
+  // "correct" the controlled value and move the caret / drop the space).
+  if (raw.length === 0) return null;
   const trimmed = raw.trim();
   if (trimmed.length === 0) return null;
 
@@ -66,7 +70,8 @@ export function coerceCellValue(column: Column, raw: string): Row["values"][stri
       return found ?? s;
     }
     default:
-      return trimmed;
+      // Preserve user-entered spacing for free-text columns.
+      return raw;
   }
 }
 
@@ -80,6 +85,24 @@ export function toDisplayValue(v: Row["values"][string]): string {
   if (typeof v === "number") return String(v);
   if (typeof v === "boolean") return v ? "true" : "false";
   return "";
+}
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function toDisplayValueForColumn(
+  column: Column,
+  v: Row["values"][string]
+): string {
+  const s = toDisplayValue(v);
+  if (s.length === 0) return "";
+
+  if (column.type === "date") {
+    if (ISO_DATE_RE.test(s)) return s;
+    const d = new Date(s);
+    return Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 10) : s;
+  }
+
+  return s;
 }
 
 export type ApplyPasteResult = {
