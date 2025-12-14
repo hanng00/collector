@@ -166,7 +166,7 @@ export function GridHeaderCell(props: {
           <PopoverContent className="w-96 p-5">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleSubmit)}>
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {guidedColumnId === c.id && missingDescription ? (
                     <div className="rounded-md bg-primary/10 border border-primary/20 p-2.5 mb-1">
                       <p className="text-xs font-medium text-primary">
@@ -224,14 +224,14 @@ export function GridHeaderCell(props: {
                           </FormLabel>
                           <FormControl>
                             <Select
-                              value={field.value}
+                              value={field.value ?? c.type}
                               onValueChange={field.onChange}
                             >
                               <SelectTrigger className="h-9 text-sm">
                                 <div className="flex items-center gap-2">
                                   <Menu className="size-4 text-muted-foreground" />
                                   <ColumnTypeInline
-                                    type={field.value}
+                                    type={(field.value ?? c.type)}
                                     className="min-w-0"
                                     iconClassName="size-3.5"
                                     labelClassName="text-sm"
